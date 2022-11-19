@@ -1,0 +1,210 @@
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <ArduinoJson.h>
+
+WiFiClient wifiClient;
+#define ORG "jqmk2u"
+#define DEVICE_TYPE "Revathyhub"
+#define DEVICE_ID "revathy2001"
+#define TOKEN "revathy@2001"
+#define speed 0.034
+char server[] = ORG ".messaging.internetofthings.ibmcloud.com";
+char publishTopic[] = "iot-2/evt/Data/fmt/json";
+char topic[] = "iot-2/cmd/home/fmt/String";
+char authMethod[] = "use-token-auth";
+char token[] = TOKEN;
+char clientId[] = "d:" ORG ":" DEVICE_TYPE ":" DEVICE_ID;
+PubSubClient client(server, 1883, wifiClient);
+//void publishData(Load ,location);
+const int trigpin=5;
+const int echopin=18;
+//const int loadpin=4;
+String command;
+String data="";
+long duration;
+int Distance;
+float Load=0;
+void publishData();
+
+String location = "Dindigul";
+//String status = "";
+
+
+void setup()
+{
+Serial.begin(115200);
+pinMode(trigpin, OUTPUT);
+pinMode(echopin, INPUT);
+//pinMode(loadpin,INPUT);
+
+wifiConnect();
+mqttConnect();
+}
+
+void loop() {
+
+   //srand(time(0));
+
+    //initial variable
+    //int p;
+
+    Load = random(0,10);
+    /*if(Load > 0  && Load < 25){
+        p = 0;
+    }
+    else if(Load > 25  && Load < 50){
+        p = 1;
+    }
+    else{
+      p = 2;
+    }
+
+    //set a quality status
+
+    switch (p) {
+    case 0:
+        status = "Low";
+        break;
+    case 1: 
+        status = "Half";
+        break;
+    case 2: 
+        status = "Full";
+        break;
+    }*/
+    //Obivously the output.It is like json format 'cause it will help us for future sprints
+    // String payload = "{";
+    // payload+="\"Load \":";
+    // payload+=Load;
+    // payload+=",";
+    // payload+="\"location\":";
+    // payload+="Dindigul";
+    // payload+=",";
+    // //payload+="\"Status\":\""+status+"\"}";
+    // //Serial.println(payload);
+    //  payload+="\"Distance\":";
+    // payload+=Distance;
+    // payload+="}";
+    
+//     Serial.println(payload);
+//     Serial.print("\n");
+// Serial.print("Sending payload: ");
+// Serial.println(payload);
+// if (client.publish(publishTopic, (char*) payload.c_str())) {
+// Serial.println("Publish OK");
+// } else {
+// Serial.println("Publish FAILED");
+// }
+
+
+publishData();
+delay(500);
+if (!client.loop()) {
+mqttConnect();
+}
+}
+void wifiConnect() {
+Serial.print("Connecting to "); Serial.print("Wifi");
+WiFi.begin("Wokwi-GUEST", "", 6);
+while (WiFi.status() != WL_CONNECTED) {
+delay(500);
+Serial.print(".");
+}
+Serial.print("WiFi connected, IP address: "); Serial.println(WiFi.localIP());
+}
+void mqttConnect() {
+if (!client.connected()) {
+Serial.print("Reconnecting MQTT client to "); Serial.println(server);
+while (!client.connect(clientId, authMethod, token)) {
+Serial.print(".");
+delay(1000);
+}
+initManagedDevice();
+Serial.println();
+}
+}
+void initManagedDevice() {
+if (client.subscribe(topic)) {
+Serial.println(client.subscribe(topic));
+Serial.println("subscribe to cmd OK");
+} else {
+Serial.println("subscribe to cmd FAILED");
+}
+}
+void publishData()
+{
+     mqttConnect();
+    
+    //DynamicJsonDocument doc(1024);
+
+// doc["Load:"]=Load;
+// serializeJson(doc, payload);
+// delay(3000);
+
+
+//     Serial.println(payload);
+//     Serial.print("\n");
+// Serial.print("Sending payload: ");
+// Serial.println(payload);
+
+// if (client.publish(publishTopic, (char*) payload.c_str())) {
+// Serial.println("Publish OK");
+// } else {
+// Serial.println("Publish FAILED");
+//}
+
+digitalWrite(trigpin,LOW);
+digitalWrite(trigpin,HIGH);
+delayMicroseconds(10);
+digitalWrite(trigpin,LOW);
+duration=pulseIn(echopin,HIGH);
+Distance=duration*speed/2;
+
+DynamicJsonDocument doc(1024);
+String payload;
+doc["Distance"]=Distance;
+serializeJson(doc, payload);
+delay(1000);
+
+Serial.print("\n");
+Serial.print("Sending payload: ");
+Serial.println(payload);
+
+if (client.publish(publishTopic, (char*) payload.c_str())) {
+Serial.println("Publish OK");
+} else {
+Serial.println("Publish FAILED");
+}
+
+DynamicJsonDocument doc1(1024);
+String payload1;
+doc1["Load"]=Load;
+ serializeJson(doc1, payload1);
+ delay(1000);
+
+ Serial.print("\n");
+Serial.print("Sending payload: ");
+Serial.println(payload1);
+
+if (client.publish(publishTopic, (char*) payload1.c_str())) {
+Serial.println("Publish OK");
+} else {
+Serial.println("Publish FAILED");
+}
+
+DynamicJsonDocument doc2(1024);
+String payload2;
+doc2["location"]="Dindigul";
+ serializeJson(doc2, payload2);
+ delay(1000);
+
+ Serial.print("\n");
+Serial.print("Sending payload: ");
+Serial.println(payload2);
+
+if (client.publish(publishTopic, (char*) payload2.c_str())) {
+Serial.println("Publish OK");
+} else {
+Serial.println("Publish FAILED");
+}
+}
